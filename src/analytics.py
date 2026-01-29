@@ -151,6 +151,10 @@ class SurfaceAnalytics:
         ivs = ivs[valid]
         if len(times) < 2:
             return True, []
+        # Sort by time to ensure ascending order for proper arbitrage check
+        sort_idx = np.argsort(times)
+        times = times[sort_idx]
+        ivs = ivs[sort_idx]
         values = ivs * np.sqrt(times)
         violations = []
         for i in range(1, len(values)):

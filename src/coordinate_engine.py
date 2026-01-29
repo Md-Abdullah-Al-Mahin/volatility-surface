@@ -49,14 +49,14 @@ class SurfaceCoordinateEngine:
 
         Returns:
             Annualized fraction: (exp_date - current_date).days / 365.0.
-            Non-positive for same day or past dates.
+            Floored to 1e-6 to prevent non-positive values that would break calculations.
         """
         if current_date is None:
             current_date = date.today()
         exp = self._to_date(exp_date)
         curr = self._to_date(current_date)
         days = (exp - curr).days
-        return days / 365.0
+        return max(days / 365.0, 1e-6)
 
     @staticmethod
     def _to_date(

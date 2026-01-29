@@ -110,23 +110,54 @@ class VolatilitySurfaceInterpolator:
             raise ValueError(
                 f"Need at least {MIN_POINTS} points for interpolation, got {n}"
             )
+        # Validate that T values are non-negative (should be time to expiry in years)
+        if np.any(T < 0):
+            n_negative = np.sum(T < 0)
+            logger.warning(
+                f"Found {n_negative} negative T values (time to expiry). "
+                "These will be filtered out or may cause issues."
+            )
+            # Filter out negative T values
+            valid_mask = T >= 0
+            if np.sum(valid_mask) < MIN_POINTS:
+                raise ValueError(
+                    f"After filtering negative T values, only {np.sum(valid_mask)} points remain, "
+                    f"need at least {MIN_POINTS}"
+                )
+            T = T[valid_mask]
+            M = M[valid_mask]
+            IV = IV[valid_mask]
+            n = len(T)
+            logger.info(f"Filtered to {n} points with non-negative T")
 
         method = method or self.method
         points = np.column_stack((T, M))
 
         T_grid, M_grid = self._create_grid(T, M, n_points_T, n_points_M)
-        t_1d = T_grid[:, 0]
-        m_1d = M_grid[0, :]
-
-        IV_grid = griddata(
+        
+        # Create evaluation points as 2D coordinate pairs to ensure consistent 2D output
+        # Flatten the meshgrids and stack them to create (T, M) pairs
+        eval_points = np.column_stack((T_grid.ravel(), M_grid.ravel()))
+        
+        # Call griddata with the flattened evaluation points
+        IV_grid_flat = griddata(
             points,
             IV,
-            (t_1d, m_1d),
+            eval_points,
             method=method,
             fill_value=fill_value if fill_value is not None else np.nan,
         )
-        if IV_grid is None:
+        if IV_grid_flat is None:
             raise ValueError("griddata returned None")
+        
+        # Reshape the flattened result to match the grid shape
+        if IV_grid_flat.ndim != 1:
+            raise ValueError(f"Expected 1D result from griddata with eval_points, got {IV_grid_flat.ndim}D")
+        if IV_grid_flat.size != n_points_T * n_points_M:
+            raise ValueError(f"Unexpected IV_grid size: {IV_grid_flat.size}, expected {n_points_T * n_points_M}")
+        
+        # Reshape to 2D grid matching T_grid and M_grid shape
+        IV_grid = IV_grid_flat.reshape(n_points_T, n_points_M)
 
         # Count extrapolation (NaN outside convex hull)
         n_nan = np.isnan(IV_grid).sum()

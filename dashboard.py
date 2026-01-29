@@ -64,7 +64,10 @@ def build_surface(ticker: str, options: dict):
         max_m=options.get("max_m", 1.3),
     )
     interp = VolatilitySurfaceInterpolator(method=options.get("interp_method", "cubic"))
-    T_grid, M_grid, IV_grid = interp.interpolate_surface(T, M, IV)
+    T_grid, M_grid, IV_grid = interp.interpolate_surface(
+        T, M, IV,
+        sigma_smooth=options.get("sigma_smooth", 1.0)
+    )
     return T_grid, M_grid, IV_grid, spot
 
 
@@ -128,6 +131,14 @@ def main():
                 options=["cubic", "linear"],
                 index=0,
             )
+            sigma_smooth = st.number_input(
+                "Gaussian smoothing (sigma)",
+                min_value=0.0,
+                max_value=5.0,
+                value=1.0,
+                step=0.5,
+                help="Smoothing strength in grid cells (0 = no smoothing, higher = smoother). Reduces ridge-like artifacts.",
+            )
             cache_valid_hours = st.number_input(
                 "Cache valid (hours)",
                 min_value=1,
@@ -144,6 +155,7 @@ def main():
             "min_m": min_m,
             "max_m": max_m,
             "interp_method": interp_method,
+            "sigma_smooth": sigma_smooth,
             "cache_valid_hours": cache_valid_hours,
         }
 
@@ -285,6 +297,7 @@ def main():
                 z=IV_plot,
                 colorscale="Viridis",
                 colorbar=dict(title="IV"),
+                hovertemplate="TTE: %{x:.4f}<br>Moneyness: %{y:.4f}<br>IV: %{z:.4f}<extra></extra>",
             )
         ]
     )
