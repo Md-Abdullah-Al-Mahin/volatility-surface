@@ -147,19 +147,19 @@ This document provides a step-by-step implementation guide for building the vola
 **File**: `src/coordinate_engine.py`
 
 **Implementation Steps**:
-1. [ ] Create `SurfaceCoordinateEngine` class
-2. [ ] Implement `__init__` method with moneyness method parameter ('ratio' or 'log')
-3. [ ] Implement `_calculate_time_to_expiry(exp_date, current_date)`:
+1. [x] Create `SurfaceCoordinateEngine` class
+2. [x] Implement `__init__` method with moneyness method parameter ('ratio' or 'log')
+3. [x] Implement `_calculate_time_to_expiry(exp_date, current_date)`:
    - Convert to annualized fraction: `(exp_date - current_date).days / 365.0`
    - Handle edge cases (same day, past dates)
-4. [ ] Implement `_calculate_moneyness(strike, spot, method='ratio')`:
+4. [x] Implement `_calculate_moneyness(strike, spot, method='ratio')`:
    - If method == 'ratio': `M = strike / spot`
    - If method == 'log': `M = log(strike / spot)`
    - Return moneyness value
-5. [ ] Implement `_filter_extreme_moneyness(df, min_m=0.7, max_m=1.3)`:
+5. [x] Implement `_filter_extreme_moneyness(df, min_m=0.7, max_m=1.3)`:
    - Filter rows where moneyness is outside bounds
    - Log number of filtered rows
-6. [ ] Implement main `transform_to_coordinates(dataframes_dict, spot_price, moneyness_method='ratio', filter_extremes=True)`:
+6. [x] Implement main `transform_to_coordinates(dataframes_dict, spot_price, moneyness_method='ratio', filter_extremes=True)`:
    - Initialize empty lists: `T`, `M`, `IV`
    - For each DataFrame in dictionary:
      - Extract expiration date
@@ -171,11 +171,11 @@ This document provides a step-by-step implementation guide for building the vola
    - Apply filtering if enabled
    - Convert to numpy arrays
    - Return `(T, M, IV)` tuple
-7. [ ] Add data validation:
+7. [x] Add data validation:
    - Check for empty arrays
    - Check for sufficient data points
    - Raise informative errors
-8. [ ] Write unit tests:
+8. [x] Write unit tests:
    - Test time calculation
    - Test moneyness calculation (both methods)
    - Test filtering logic
