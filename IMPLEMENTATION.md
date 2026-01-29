@@ -96,29 +96,29 @@ This document provides a step-by-step implementation guide for building the vola
 **File**: `src/iv_processor.py`
 
 **Implementation Steps**:
-1. [ ] Create `ImpliedVolatilityProcessor` class
-2. [ ] Implement `__init__` method with risk-free rate source parameter
-3. [ ] Implement `_get_risk_free_rate()` method:
+1. [x] Create `ImpliedVolatilityProcessor` class
+2. [x] Implement `__init__` method with risk-free rate source parameter
+3. [x] Implement `_get_risk_free_rate()` method:
    - Fetch `^TNX` (10-year Treasury) from yfinance
    - Convert yield to decimal (divide by 100)
    - Fallback to user-provided constant (default: 0.05)
-4. [ ] Implement `_calculate_consensus_price(row)` method:
+4. [x] Implement `_calculate_consensus_price(row)` method:
    - Priority: `(bid + ask) / 2` if both available
    - Fallback: `lastPrice` if available
    - Return NaN if neither available
-5. [ ] Implement Black-Scholes pricing functions:
+5. [x] Implement Black-Scholes pricing functions:
    - `_black_scholes_price(S, K, T, r, sigma, option_type='call')`
    - Use `scipy.stats.norm` for cumulative normal distribution
    - Handle both call and put options
-6. [ ] Implement IV solver using Newton-Raphson method:
+6. [x] Implement IV solver using Newton-Raphson method:
    - `_calculate_iv_newton_raphson(S, K, T, r, market_price, option_type, max_iter=100, tol=1e-6)`
    - Alternative: Implement Bisection method as fallback
    - Handle convergence failures gracefully
-7. [ ] Implement `_validate_iv(iv_value)` method:
+7. [x] Implement `_validate_iv(iv_value)` method:
    - Check for negative values → flag as invalid
    - Check for values > 2.0 (200%) → flag as invalid
    - Return boolean
-8. [ ] Implement main `process_iv(dataframes_dict, spot_price)` method:
+8. [x] Implement main `process_iv(dataframes_dict, spot_price)` method:
    - Get risk-free rate
    - For each DataFrame in dictionary:
      - Calculate consensus price for each row
@@ -128,8 +128,8 @@ This document provides a step-by-step implementation guide for building the vola
      - Add/update `impliedVolatility` column
      - Log statistics (how many IVs were calculated vs. used from yfinance)
    - Return enhanced dictionary of DataFrames
-9. [ ] Add comprehensive error handling and logging
-10. [ ] Write unit tests:
+9. [x] Add comprehensive error handling and logging
+10. [x] Write unit tests:
     - Test Black-Scholes pricing (known values)
     - Test IV calculation (reverse: price → IV)
     - Test validation logic
