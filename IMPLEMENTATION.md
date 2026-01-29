@@ -80,7 +80,8 @@ This document provides a step-by-step implementation guide for building the vola
 6. [ ] Implement cache management:
    - `_load_from_cache(ticker, exp_date)`
    - `_save_to_cache(ticker, exp_date, data)`
-   - Cache invalidation logic (e.g., daily)
+   - Cache invalidation logic (e.g., daily): when cache is invalid (stale or corrupt), delete the cache file
+   - `clear_cache(ticker=None)` to explicitly invalidate and delete cache (per ticker or all)
 7. [ ] Add logging for fetch operations
 8. [ ] Write unit tests:
    - Test successful data fetch
