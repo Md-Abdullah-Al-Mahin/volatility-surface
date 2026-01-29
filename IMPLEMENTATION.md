@@ -260,36 +260,33 @@ The **live volatility surface dashboard** is the main entry point. It runs the f
 **File**: `src/analytics.py`
 
 **Implementation Steps**:
-1. [ ] Create `SurfaceAnalytics` class
-2. [ ] Implement `__init__` method with surface grid data
-3. [ ] Implement `calculate_skew(target_time, put_moneyness=0.95, call_moneyness=1.05)`:
+1. [x] Create `SurfaceAnalytics` class
+2. [x] Implement `__init__` method with surface grid data
+3. [x] Implement `calculate_skew(target_time, put_moneyness=0.95, call_moneyness=1.05)`:
    - Find closest time point to target_time
    - Find IV at put_moneyness and call_moneyness
    - Calculate skew: `IV_put - IV_call`
    - Return skew value and metadata
-4. [ ] Implement `get_term_structure(target_moneyness=1.0)`:
+4. [x] Implement `get_term_structure(target_moneyness=1.0)`:
    - Find closest moneyness point
    - Extract IV array across all times
    - Return (times, IVs) tuple
-5. [ ] Implement `check_calendar_arbitrage(target_moneyness, tolerance=0.01)`:
+5. [x] Implement `check_calendar_arbitrage(target_moneyness, tolerance=0.01)`:
    - Extract IV term structure for target_moneyness
    - Calculate `IV * sqrt(T)` for each time point
    - Check if values are non-decreasing (with tolerance)
    - Flag violations
    - Return (is_valid, violations_list) tuple
-6. [ ] Implement `compare_surfaces(surface1, surface2, label1, label2)`:
-   - Calculate difference: `IV_grid_1 - IV_grid_2`
-   - Generate difference plot
-   - Calculate summary statistics (mean diff, max diff, etc.)
-   - Return comparison report dictionary
-7. [ ] Implement `generate_metrics_report(output_path=None)`:
-   - Calculate skew for multiple expiries
+6. [x] Implement `compare_surfaces(...)` (standalone function):
+   - Calculate difference: `IV_grid_1 - IV_grid_2` (same grid shape required)
+   - Return comparison report (diff_grid, mean_diff, max_diff, min_diff, labels)
+7. [x] Implement `generate_metrics_report(output_path=None)`:
+   - Calculate skew for multiple expiries (default 30/90/180 days)
    - Get term structure
    - Run arbitrage checks
-   - Format as dictionary or DataFrame
-   - Export to CSV if path provided
+   - Format as dictionary; export to CSV if path provided
    - Return report
-8. [ ] Write unit tests:
+8. [x] Write unit tests:
    - Test skew calculation
    - Test term structure extraction
    - Test arbitrage detection
@@ -297,44 +294,41 @@ The **live volatility surface dashboard** is the main entry point. It runs the f
 
 **Success Criteria**: Can calculate all metrics and generate comprehensive analytics report for SPY surface.
 
-### Step 4.2: CLI Integration - main.py
+**Dashboard integration**: The dashboard expander "Surface summary & analytics" uses `SurfaceAnalytics` to show skew at 30/90/180 days and calendar arbitrage (ATM) result.
 
-**File**: `main.py`
+### Step 4.2: Dashboard configurable options (no CLI)
 
-**Implementation Steps**:
-1. [ ] Set up argument parser using `argparse`:
-   - `--ticker`: Required, ticker symbol
-   - `--date`: Optional, specific date (default: today)
-   - `--plot`: Optional, plot type ('3d', 'smile', 'term', 'all')
-   - `--save`: Optional, output file path
-   - `--metric`: Optional, metric to calculate ('skew', 'term', 'arbitrage', 'all')
-   - `--export`: Optional, export metrics to CSV
-   - `--interactive`: Flag for plotly interactive plots
-   - `--cache`: Flag to use cache
-2. [ ] Implement main pipeline function:
-   ```python
-   def main():
-       # Parse arguments
-       # Initialize data fetcher
-       # Fetch data
-       # Process IV
-       # Transform coordinates
-       # Interpolate surface
-       # Generate visualizations (if requested)
-       # Calculate metrics (if requested)
-       # Export results
-   ```
-3. [ ] Add error handling and user-friendly messages
-4. [ ] Add progress indicators for long operations
-5. [ ] Implement logging to file and console
-6. [ ] Test CLI with various command combinations:
-   ```bash
-   python main.py --ticker SPY --plot 3d --save output.png
-   python main.py --ticker AAPL --metric all --export metrics.csv
-   python main.py --ticker SPY --plot all --interactive
-   ```
+**File**: `dashboard.py`
 
-**Success Criteria**: Can run full pipeline from command line with < 5 commands, generating plots and metrics.
+All pipeline and analytics options are configurable in the dashboard sidebar and expander. No CLI arguments.
+
+**Implementation (done)**:
+
+1. **Sidebar – main**
+   - **Ticker** — Underlying symbol (default SPY).
+   - **Refresh every (seconds)** — Auto-refresh interval (30–600 s).
+   - **Refresh now** — Manually refetch and rebuild surface.
+   - **Clear cache** — Clear cache for current ticker; next refresh fetches fresh data.
+
+2. **Sidebar – expander "Pipeline & analytics options"**
+   - **Risk-free rate (decimal)** — e.g. 0.05 = 5% (default 0.05).
+   - **Use Treasury (^TNX) for risk-free rate** — Checkbox; if set, fetch 10Y Treasury yield (fallback to rate above).
+   - **Moneyness** — `ratio` (strike/spot) or `log` (log(strike/spot)).
+   - **Filter extreme moneyness** — Checkbox (default on).
+   - **Min moneyness** / **Max moneyness** — Bounds when filtering (default 0.7, 1.3).
+   - **Interpolation** — `cubic` or `linear`.
+   - **Cache valid (hours)** — How long cache is considered fresh (default 24).
+
+3. **Refetch when options change**
+   - Current options are compared to the options used for the last surface (via a normalized key). If they differ, the next run refetches and rebuilds the surface.
+
+4. **Export metrics**
+   - In the "Surface summary & analytics" expander: **Export metrics to CSV** button. Downloads a CSV with skew (30/90/180 days) and calendar arbitrage result for the current surface.
+
+5. **main.py**
+   - Still only launches the dashboard (`streamlit run dashboard.py`). No argparse or CLI flags.
+
+**Success Criteria**: All behaviour that would have been CLI flags (ticker, cache, risk-free rate, moneyness, interpolation, filter, export) is configurable and/or available on the dashboard.
 
 ---
 
