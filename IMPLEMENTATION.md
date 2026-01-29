@@ -1,7 +1,7 @@
 # Implementation Plan: 3D Financial Volatility Surface Constructor
 
 ## Overview
-This document provides a step-by-step implementation guide for building the volatility surface constructor. Follow these steps sequentially, with each module building upon the previous ones.
+This document describes the implementation of the volatility surface constructor: a four-module pipeline (data fetcher, IV processor, coordinate engine, interpolator) and a **live Streamlit dashboard** that runs the pipeline and displays an interactive 3D volatility surface that updates on a timer. The dashboard is the main entry point; there is no separate Visualization Suite or report-generation flow.
 
 ---
 
@@ -12,27 +12,22 @@ This document provides a step-by-step implementation guide for building the vola
 - [ ] Initialize project structure:
   ```
   volatility-surface/
+  ├── dashboard.py            # Streamlit live dashboard (entry point)
   ├── src/
   │   ├── __init__.py
   │   ├── data_fetcher.py      # Module 1
   │   ├── iv_processor.py      # Module 2
   │   ├── coordinate_engine.py  # Module 3
   │   ├── surface_interpolator.py # Module 4
-  │   ├── visualization.py     # Module 5
-  │   └── analytics.py         # Module 6
+  │   └── analytics.py         # Module 6 (placeholder)
   ├── tests/
   │   ├── __init__.py
   │   ├── test_data_fetcher.py
   │   ├── test_iv_processor.py
   │   ├── test_coordinate_engine.py
-  │   ├── test_interpolator.py
-  │   ├── test_visualization.py
-  │   └── test_analytics.py
-  ├── notebooks/
-  │   └── demo.ipynb
+  │   └── test_interpolator.py
   ├── data/
   │   └── cache/              # For cached yfinance data
-  ├── main.py                 # CLI entry point
   ├── requirements.txt
   ├── setup.py
   └── README.md
@@ -44,10 +39,11 @@ This document provides a step-by-step implementation guide for building the vola
   pandas>=1.5.0
   numpy>=1.23.0
   scipy>=1.10.0
-  matplotlib>=3.6.0
   plotly>=5.14.0
+  pyarrow>=10.0.0
+  streamlit>=1.28.0
+  streamlit-autorefresh>=0.0.1
   pytest>=7.2.0
-  jupyter>=1.0.0
   ```
 
 - [ ] Install dependencies: `pip install -r requirements.txt`
@@ -220,58 +216,40 @@ This document provides a step-by-step implementation guide for building the vola
 
 ---
 
-## Phase 3: Visualization (Week 5)
+## Phase 3: Live Dashboard
 
-### Step 3.1: Module 5 - VisualizationSuite
+### Step 3.1: Dashboard (dashboard.py)
 
-**File**: `src/visualization.py`
+**File**: `dashboard.py` (project root)
 
-**Implementation Steps**:
-1. [ ] Create `VisualizationSuite` class
-2. [ ] Implement `__init__` method with output directory parameter
-3. [ ] Implement `plot_3d_surface_matplotlib(T_grid, M_grid, IV_grid, title, save_path=None)`:
-   - Use `matplotlib.pyplot` and `mpl_toolkits.mplot3d`
-   - Create `ax = fig.add_subplot(111, projection='3d')`
-   - Use `ax.plot_surface(T_grid, M_grid, IV_grid, cmap='viridis')`
-   - Set labels: X='Time to Expiry', Y='Moneyness', Z='Implied Volatility'
-   - Add colorbar
-   - Save if path provided
-   - Return figure object
-4. [ ] Implement `plot_3d_surface_plotly(T_grid, M_grid, IV_grid, title, save_path=None)`:
-   - Use `plotly.graph_objects.Surface`
-   - Create interactive plot with hover information
-   - Add axis labels and title
-   - Save as HTML if path provided
-   - Return figure object
-5. [ ] Implement `plot_volatility_smile(T_grid, M_grid, IV_grid, target_times=[30, 90, 180], save_path=None)`:
-   - For each target time (in days):
-     - Find closest time point in T_grid
-     - Extract IV slice for that time (IV vs M)
-     - Plot IV vs Moneyness
-   - Add legend with expiry labels
-   - Save if path provided
-   - Return figure object
-6. [ ] Implement `plot_term_structure(T_grid, M_grid, IV_grid, target_moneyness=1.0, save_path=None)`:
-   - Find closest moneyness point to target (e.g., M=1.0)
-   - Extract IV slice for that moneyness (IV vs T)
-   - Plot IV vs Time to Expiry
-   - Add labels and title
-   - Save if path provided
-   - Return figure object
-7. [ ] Implement `generate_all_plots(T_grid, M_grid, IV_grid, ticker, output_dir)`:
-   - Generate all four plot types
-   - Save with descriptive filenames
-   - Return dictionary of figure objects
-8. [ ] Add styling and formatting:
-   - Professional color schemes
-   - Consistent font sizes
-   - Grid lines where appropriate
-9. [ ] Write unit tests:
-   - Test plot generation (check files created)
-   - Test with various data shapes
-   - Test error handling
+The **live volatility surface dashboard** is the main entry point. It runs the full pipeline and displays an interactive 3D Plotly surface that updates on a timer.
 
-**Success Criteria**: Can generate all four visualization types for SPY data, producing publication-quality plots.
+**Implementation (done)**:
+
+1. **Run**: `streamlit run dashboard.py` — opens in browser (e.g. http://localhost:8501).
+
+2. **Sidebar**:
+   - **Ticker** — Underlying symbol (default `SPY`). User can change and refresh.
+   - **Refresh every (seconds)** — Auto-refresh interval (e.g. 30–600 s). The app reruns and refetches when this interval has elapsed.
+   - **Refresh now** — Button to manually trigger a refetch and redraw.
+
+3. **Auto-refresh**:
+   - Uses `streamlit-autorefresh` so the script reruns every N seconds (N = sidebar value).
+   - On each run: if the refresh interval has passed, or ticker changed, or **Refresh now** was clicked, the pipeline is run again and the surface is updated.
+   - `st.session_state` stores: `surface` (T_grid, M_grid, IV_grid), `surface_ticker`, `surface_spot`, `last_fetch_time`, `surface_error`.
+
+4. **Pipeline in dashboard**:
+   - `get_spot_price(ticker)` — Fetches current underlying price from yfinance (fast_info or history).
+   - `build_surface(ticker)` — Runs: `SmartOptionsDataFetcher.fetch_options_data` → `ImpliedVolatilityProcessor.process_iv` → `SurfaceCoordinateEngine.transform_to_coordinates` → `VolatilitySurfaceInterpolator.interpolate_surface`; returns `(T_grid, M_grid, IV_grid, spot)`.
+
+5. **Main area**:
+   - **Metrics** — Ticker, spot price, grid size (e.g. 50×50).
+   - **Plotly 3D surface** — Built inline with `plotly.graph_objects.Surface` (T_grid, M_grid, IV_grid). Interactive: rotate, zoom, pan in the browser. Displayed with `st.plotly_chart(fig, use_container_width=True)`.
+   - **Caption** — Shows refresh interval and last load info.
+
+6. **Error handling**: If fetch or pipeline fails, error message is stored in session state and shown; user can change ticker or click Refresh now.
+
+**Success Criteria**: User runs `streamlit run dashboard.py`, sees a live 3D volatility surface that updates automatically at the chosen interval and when Refresh now is clicked.
 
 ---
 
@@ -411,10 +389,7 @@ This document provides a step-by-step implementation guide for building the vola
 1. [ ] Research and implement SVI (Stochastic Volatility Inspired) model:
    - More sophisticated surface parameterization
    - Better handling of volatility smile
-2. [ ] Build Streamlit/Plotly Dash dashboard:
-   - Interactive ticker selection
-   - Real-time surface updates
-   - Metric visualization
+2. [x] Build Streamlit dashboard (done): interactive ticker selection, real-time surface updates via auto-refresh.
 3. [ ] Add yield curve support:
    - Fetch multiple Treasury rates
    - Use maturity-matched risk-free rates
@@ -437,10 +412,10 @@ This document provides a step-by-step implementation guide for building the vola
 - [ ] Module 4: Surface Interpolator (complete)
 - [ ] Tests for Modules 3 & 4
 
-### Week 5: Visualization
-- [ ] Module 5: Visualization Suite (complete)
-- [ ] Generate all plot types
-- [ ] Tests for Module 5
+### Week 5: Dashboard
+- [x] Live dashboard (dashboard.py)
+- [x] Streamlit + streamlit-autorefresh
+- [x] Interactive 3D Plotly surface with auto-refresh
 
 ### Week 6: Analytics & Integration
 - [ ] Module 6: Analytics (complete)
@@ -455,7 +430,6 @@ This document provides a step-by-step implementation guide for building the vola
 
 ### Week 8: Stretch Goals
 - [ ] Advanced features (optional)
-- [ ] Dashboard (optional)
 
 ---
 

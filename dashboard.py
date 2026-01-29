@@ -19,6 +19,7 @@ from src.data_fetcher import SmartOptionsDataFetcher
 from src.iv_processor import ImpliedVolatilityProcessor
 from src.coordinate_engine import SurfaceCoordinateEngine
 from src.surface_interpolator import VolatilitySurfaceInterpolator
+from src.analytics import get_surface_summary
 
 try:
     from streamlit_autorefresh import st_autorefresh
@@ -41,12 +42,12 @@ def get_spot_price(ticker: str) -> float:
 
 
 def build_surface(ticker: str):
-    """Fetch options, process IV, build (T_grid, M_grid, IV_grid)."""
-    fetcher = SmartOptionsDataFetcher(cache_valid_hours=24)
-    data = fetcher.fetch_options_data(ticker)
+    """Fetch options, process IV, build (T_grid, M_grid, IV_grid). Fails fast on invalid ticker (spot first)."""
     spot = get_spot_price(ticker)
     if spot <= 0:
         raise ValueError(f"Could not get spot price for {ticker}")
+    fetcher = SmartOptionsDataFetcher(cache_valid_hours=24)
+    data = fetcher.fetch_options_data(ticker)
     iv_processor = ImpliedVolatilityProcessor(risk_free_rate=0.05, use_treasury_rate=False)
     data = iv_processor.process_iv(data, spot_price=spot)
     engine = SurfaceCoordinateEngine(moneyness_method="ratio")
@@ -76,6 +77,15 @@ def main():
             step=30,
         )
         refresh_now = st.button("Refresh now")
+        clear_cache = st.button("Clear cache")
+        if clear_cache:
+            fetcher = SmartOptionsDataFetcher()
+            n = fetcher.clear_cache(ticker)
+            st.session_state.surface = None
+            st.session_state.last_fetch_time = None
+            st.session_state.surface_error = None
+            st.success(f"Cleared {n} cache file(s). Surface will refetch on next refresh.")
+            st.rerun()
 
     # Auto-refresh (rerun script every N seconds)
     if st_autorefresh is not None:
@@ -139,6 +149,16 @@ def main():
         st.metric("Spot", f"${spot:.2f}")
     with col3:
         st.metric("Grid", f"{IV_grid.shape[0]}×{IV_grid.shape[1]}")
+
+    # Surface summary (analytics)
+    summary = get_surface_summary(T_grid, M_grid, IV_grid)
+    with st.expander("Surface summary"):
+        if summary["n_valid"]:
+            st.write(f"**IV range:** {summary['min_iv']:.2%} – {summary['max_iv']:.2%}")
+            st.write(f"**Mean IV:** {summary['mean_iv']:.2%}")
+            st.write(f"**Valid points:** {summary['n_valid']}")
+        st.write(f"**Time to expiry (years):** {summary['T_range'][0]:.3f} – {summary['T_range'][1]:.3f}")
+        st.write(f"**Moneyness:** {summary['M_range'][0]:.3f} – {summary['M_range'][1]:.3f}")
 
     # 3D Plotly surface (interactive)
     import numpy as np
