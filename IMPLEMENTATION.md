@@ -189,13 +189,13 @@ This document provides a step-by-step implementation guide for building the vola
 **File**: `src/surface_interpolator.py`
 
 **Implementation Steps**:
-1. [ ] Create `VolatilitySurfaceInterpolator` class
-2. [ ] Implement `__init__` method with interpolation method parameter ('cubic' or 'linear')
-3. [ ] Implement `_create_grid(T, M, n_points_T=50, n_points_M=50)`:
+1. [x] Create `VolatilitySurfaceInterpolator` class
+2. [x] Implement `__init__` method with interpolation method parameter ('cubic' or 'linear')
+3. [x] Implement `_create_grid(T, M, n_points_T=50, n_points_M=50)`:
    - Calculate min/max for T and M
    - Create uniform grids using `numpy.linspace`
    - Return `T_grid, M_grid` as meshgrids
-4. [ ] Implement `interpolate_surface(T, M, IV, method='cubic', n_points_T=50, n_points_M=50)`:
+4. [x] Implement `interpolate_surface(T, M, IV, method='cubic', n_points_T=50, n_points_M=50)`:
    - Create grid
    - Use `scipy.interpolate.griddata`:
      - For cubic: `method='cubic'`
@@ -204,13 +204,13 @@ This document provides a step-by-step implementation guide for building the vola
      - Use `fill_value='nearest'` or `fill_value=np.nan`
      - Optionally clip extrapolated values to reasonable bounds
    - Return `(T_grid, M_grid, IV_grid)`
-5. [ ] Add validation:
+5. [x] Add validation:
    - Check minimum number of data points (e.g., > 10)
    - Check for sufficient data coverage
    - Warn if extrapolation is extensive
-6. [ ] Implement optional smoothing (if needed):
+6. [x] Implement optional smoothing (if needed):
    - Use `scipy.ndimage.gaussian_filter` for post-processing
-7. [ ] Write unit tests:
+7. [x] Write unit tests:
    - Test with synthetic data (known surface)
    - Test interpolation accuracy
    - Test edge cases (sparse data, boundary conditions)
